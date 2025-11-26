@@ -14,24 +14,24 @@ const HUD: React.FC<HUDProps> = ({ totalCount, onRandom }) => {
             transition={{ delay: 1, duration: 0.8 }}
             className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 w-full justify-center px-4"
         >
-            <div className="glass-panel px-6 py-3 rounded-3xl md:rounded-full flex flex-col md:flex-row items-center gap-3 md:gap-6 w-full md:w-auto max-w-sm md:max-w-none">
+            <div className="glass-panel px-4 py-2 md:px-6 md:py-3 rounded-full flex flex-row items-center gap-3 md:gap-6 w-auto max-w-[95vw] md:max-w-none mx-auto">
                 <div className="flex flex-col items-start">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Status</span>
-                    <span className="text-sm font-medium text-white flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold hidden md:block">Status</span>
+                    <span className="text-xs md:text-sm font-medium text-white flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        {totalCount} Species Mapped
+                        {totalCount} <span className="hidden sm:inline">Species Mapped</span>
                     </span>
                 </div>
 
-                <div className="hidden md:block h-8 w-px bg-white/10" />
+                <div className="h-6 w-px bg-white/10" />
 
                 <button
                     onClick={onRandom}
-                    className="glass-button px-5 py-2 rounded-full text-sm font-medium text-white hover:text-cyan-300 flex items-center gap-2 group"
+                    className="glass-button px-3 py-1.5 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-medium text-white hover:text-cyan-300 flex items-center gap-2 group whitespace-nowrap"
                 >
                     <span>🎲</span>
-                    Discover Random
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                    <span className="hidden xs:inline">Discover</span> Random
+                    <span className="group-hover:translate-x-1 transition-transform hidden sm:inline">→</span>
                 </button>
             </div>
         </motion.div>

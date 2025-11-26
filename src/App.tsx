@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobeView, { type GlobeViewHandle } from './components/GlobeView';
 import FactCard from './components/FactCard';
@@ -12,6 +12,8 @@ import iso3166 from 'iso-3166-1';
 import { detectOcean } from './lib/oceanDetector';
 
 import GlobeControls, { type GlobeStyle } from './components/GlobeControls';
+
+// Static Heatmap Data Generation Removed - Using static texture
 
 function App() {
   const [selectedAnimals, setSelectedAnimals] = useState<Point[]>([]);
@@ -27,40 +29,20 @@ function App() {
     buildIndex(animalsData);
   }, []);
 
-  // Memoize heatmap data to prevent recalculation on every render
-  const heatmapData = useMemo(() => {
-    // Aggregate points to reduce rendering load (grid size: 1 degree)
-    const aggregated = new Map<string, { lat: number; lng: number; weight: number }>();
-
-    animalsData.forEach(animal => {
-      const lat = Math.round(animal.lat);
-      const lng = Math.round(animal.lng);
-      const key = `${lat},${lng}`;
-
-      if (aggregated.has(key)) {
-        aggregated.get(key)!.weight += 1;
-      } else {
-        aggregated.set(key, { lat, lng, weight: 1 });
-      }
-    });
-
-    return Array.from(aggregated.values());
-  }, [animalsData]);
-
   // Determine globe texture based on style
   const getGlobeTexture = () => {
     switch (globeStyle) {
-      case 'day': return '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-      case 'heatmap': return '//unpkg.com/three-globe/example/img/earth-night.jpg'; // Heatmap uses night base
+      case 'day': return 'earth-blue-marble.jpg';
+      case 'heatmap': return 'heatmap.png'; // Use optimized PNG texture
       case 'night':
-      default: return '//unpkg.com/three-globe/example/img/earth-night.jpg';
+      default: return 'earth-night.jpg';
     }
   };
 
   const getBumpTexture = () => {
     switch (globeStyle) {
-      case 'day': return '//unpkg.com/three-globe/example/img/earth-topology.png';
-      case 'night': return '//unpkg.com/three-globe/example/img/earth-topology.png';
+      case 'day': return 'earth-topology.png';
+      case 'night': return 'earth-topology.png';
       default: return undefined;
     }
   };
@@ -148,21 +130,22 @@ function App() {
         onLocationSelect={handleLocationSelect}
         globeImageUrl={getGlobeTexture()}
         bumpImageUrl={getBumpTexture()}
-        showHeatmap={globeStyle === 'heatmap'}
-        heatmapData={heatmapData}
+        showHeatmap={false} // Disable dynamic heatmap
+        heatmapData={[]} // No data needed
         isPaused={selectedAnimals.length > 0}
       />
+
 
       {/* Branding Overlay */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="absolute top-8 left-8 z-10 pointer-events-none select-none"
+        className="absolute top-6 left-6 md:top-8 md:left-8 z-10 pointer-events-none select-none"
       >
-        <div className="glass-panel px-6 py-3 rounded-full flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 animate-pulse" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent tracking-tight">
+        <div className="glass-panel px-4 py-2 md:px-6 md:py-3 rounded-full flex items-center gap-3">
+          <img src="icon.png" alt="Wild Sphere" className="w-5 h-5 md:w-6 md:h-6 animate-pulse" />
+          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent tracking-tight">
             Wild Sphere
           </h1>
         </div>

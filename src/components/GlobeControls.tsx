@@ -20,7 +20,7 @@ export default function GlobeControls({ currentStyle, onStyleChange }: GlobeCont
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1, duration: 0.5 }}
-            className="absolute top-24 right-4 md:top-auto md:bottom-8 md:right-8 z-10 flex flex-col gap-2"
+            className="absolute top-6 right-6 md:top-auto md:bottom-8 md:right-8 z-50 flex flex-col gap-2"
         >
             <div className="glass-panel p-2 rounded-xl flex flex-col gap-1 backdrop-blur-md bg-black/30 border border-white/10">
                 {styles.map((style) => (
@@ -35,7 +35,7 @@ export default function GlobeControls({ currentStyle, onStyleChange }: GlobeCont
             `}
                     >
                         {style.icon}
-                        <span>{style.label}</span>
+                        <span className="hidden md:inline">{style.label}</span>
                     </button>
                 ))}
             </div>
