@@ -1,8 +1,13 @@
-import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 
 interface GlobeViewProps {
     onLocationSelect: (lat: number, lng: number) => void;
+    globeImageUrl?: string;
+    bumpImageUrl?: string;
+    showHeatmap?: boolean;
+    heatmapData?: any[];
+    isPaused?: boolean;
 }
 
 export interface GlobeViewHandle {
@@ -11,18 +16,31 @@ export interface GlobeViewHandle {
     zoomOut: () => void;
 }
 
-const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({ onLocationSelect }, ref) => {
+const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({
+    onLocationSelect,
+    globeImageUrl = "//unpkg.com/three-globe/example/img/earth-night.jpg",
+    bumpImageUrl,
+    showHeatmap = false,
+    heatmapData = [],
+    isPaused = false
+}, ref) => {
     const globeEl = useRef<GlobeMethods | undefined>(undefined);
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+    const [isAnimating, setIsAnimating] = useState(false);
+    const dragStartPos = useRef<{ x: number, y: number } | null>(null);
 
     useImperativeHandle(ref, () => ({
         flyTo: (lat: number, lng: number) => {
             if (globeEl.current) {
+                setIsAnimating(true);
                 globeEl.current.pointOfView({ lat, lng, altitude: 1.5 }, 2000);
+                setTimeout(() => setIsAnimating(false), 2000);
             }
         },
         animateTo: async (lat: number, lng: number) => {
             if (!globeEl.current) return;
+
+            setIsAnimating(true); // Disable heatmap during animation
 
             // Get current position
             const currentPOV = globeEl.current.pointOfView();
@@ -41,6 +59,7 @@ const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({ onLocationSelec
             return new Promise<void>((resolve) => {
                 const animate = (currentTime: number) => {
                     if (!globeEl.current) {
+                        setIsAnimating(false);
                         resolve();
                         return;
                     }
@@ -77,6 +96,7 @@ const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({ onLocationSelec
                             altitude: targetAltitude
                         }, 200);
 
+                        setIsAnimating(false); // Re-enable heatmap
                         setTimeout(() => resolve(), 200);
                     }
                 };
@@ -87,12 +107,14 @@ const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({ onLocationSelec
         zoomOut: () => {
             if (!globeEl.current) return;
 
+            setIsAnimating(true);
             // Zoom out to default view
             globeEl.current.pointOfView({
                 lat: 0,
                 lng: 0,
                 altitude: 2.5
             }, 1500);
+            setTimeout(() => setIsAnimating(false), 1500);
         }
     }));
 
@@ -100,22 +122,61 @@ const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(({ onLocationSelec
         const handleResize = () => {
             setDimensions({ width: window.innerWidth, height: window.innerHeight });
         };
-
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const handleMouseDown = (event: React.MouseEvent) => {
+        dragStartPos.current = { x: event.clientX, y: event.clientY };
+    };
+
+    const handleMouseUp = (event: React.MouseEvent) => {
+        if (!globeEl.current || !dragStartPos.current) return;
+
+        const deltaX = Math.abs(event.clientX - dragStartPos.current.x);
+        const deltaY = Math.abs(event.clientY - dragStartPos.current.y);
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        // Only treat as a click if the mouse moved less than 5 pixels
+        if (distance < 5) {
+            // Use toGlobeCoords to raycast to the globe surface, bypassing overlays like heatmap
+            const coords = globeEl.current.toGlobeCoords(event.clientX, event.clientY);
+            if (coords) {
+                onLocationSelect(coords.lat, coords.lng);
+            }
+        }
+
+        dragStartPos.current = null;
+    };
+
+    // Memoize the heatmapsData array to prevent unnecessary updates in the Globe component
+    // Only show heatmap if showHeatmap is true AND we are NOT animating AND NOT paused
+    const globeHeatmapsData = useMemo(() => (showHeatmap && !isAnimating && !isPaused) ? [heatmapData] : [], [showHeatmap, heatmapData, isAnimating, isPaused]);
+
     return (
-        <Globe
-            ref={globeEl}
-            width={dimensions.width}
-            height={dimensions.height}
-            globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-            backgroundColor="rgba(0,0,0,0)"
-            atmosphereColor="#7c3aed"
-            atmosphereAltitude={0.2}
-            onGlobeClick={({ lat, lng }) => onLocationSelect(lat, lng)}
-        />
+        <div
+            className="w-full h-full"
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+        >
+            <Globe
+                ref={globeEl}
+                width={dimensions.width}
+                height={dimensions.height}
+                globeImageUrl={globeImageUrl}
+                bumpImageUrl={bumpImageUrl}
+                backgroundColor="rgba(0,0,0,0)"
+                atmosphereColor="#7c3aed"
+                atmosphereAltitude={0.2}
+                heatmapsData={globeHeatmapsData}
+                heatmapPointLat="lat"
+                heatmapPointLng="lng"
+                heatmapPointWeight="weight"
+                heatmapTopAltitude={0}
+                heatmapBandwidth={1.5} // Increased for continuous "weather map" look
+                heatmapColorSaturation={2.0} // Adjusted for vibrancy
+            />
+        </div>
     );
 });
 

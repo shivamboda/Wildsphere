@@ -19,6 +19,7 @@
     "geokdbush": "^2.0.1",
     "iso-3166-1": "^2.1.1",
     "kdbush": "^4.0.2",
+    "lucide-react": "^0.555.0",
     "postcss": "^8.5.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

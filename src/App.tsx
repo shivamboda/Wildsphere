@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobeView, { type GlobeViewHandle } from './components/GlobeView';
 import FactCard from './components/FactCard';
@@ -11,10 +11,13 @@ import whichCountry from 'which-country';
 import iso3166 from 'iso-3166-1';
 import { detectOcean } from './lib/oceanDetector';
 
+import GlobeControls, { type GlobeStyle } from './components/GlobeControls';
+
 function App() {
   const [selectedAnimals, setSelectedAnimals] = useState<Point[]>([]);
   const [lastShownAnimal, setLastShownAnimal] = useState<Point | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [globeStyle, setGlobeStyle] = useState<GlobeStyle>('day'); // Default to Day view
   const globeRef = useRef<GlobeViewHandle>(null);
 
   // Cast the raw JSON to Point[] to satisfy TypeScript
@@ -23,6 +26,44 @@ function App() {
   useEffect(() => {
     buildIndex(animalsData);
   }, []);
+
+  // Memoize heatmap data to prevent recalculation on every render
+  const heatmapData = useMemo(() => {
+    // Aggregate points to reduce rendering load (grid size: 1 degree)
+    const aggregated = new Map<string, { lat: number; lng: number; weight: number }>();
+
+    animalsData.forEach(animal => {
+      const lat = Math.round(animal.lat);
+      const lng = Math.round(animal.lng);
+      const key = `${lat},${lng}`;
+
+      if (aggregated.has(key)) {
+        aggregated.get(key)!.weight += 1;
+      } else {
+        aggregated.set(key, { lat, lng, weight: 1 });
+      }
+    });
+
+    return Array.from(aggregated.values());
+  }, [animalsData]);
+
+  // Determine globe texture based on style
+  const getGlobeTexture = () => {
+    switch (globeStyle) {
+      case 'day': return '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+      case 'heatmap': return '//unpkg.com/three-globe/example/img/earth-night.jpg'; // Heatmap uses night base
+      case 'night':
+      default: return '//unpkg.com/three-globe/example/img/earth-night.jpg';
+    }
+  };
+
+  const getBumpTexture = () => {
+    switch (globeStyle) {
+      case 'day': return '//unpkg.com/three-globe/example/img/earth-topology.png';
+      case 'night': return '//unpkg.com/three-globe/example/img/earth-topology.png';
+      default: return undefined;
+    }
+  };
 
   const handleLocationSelect = async (lat: number, lng: number) => {
     // 1. Identify Country or Ocean
@@ -102,7 +143,15 @@ function App() {
     <div className="relative w-full h-screen overflow-hidden bg-black">
       <Starfield />
 
-      <GlobeView ref={globeRef} onLocationSelect={handleLocationSelect} />
+      <GlobeView
+        ref={globeRef}
+        onLocationSelect={handleLocationSelect}
+        globeImageUrl={getGlobeTexture()}
+        bumpImageUrl={getBumpTexture()}
+        showHeatmap={globeStyle === 'heatmap'}
+        heatmapData={heatmapData}
+        isPaused={selectedAnimals.length > 0}
+      />
 
       {/* Branding Overlay */}
       <motion.div
@@ -126,10 +175,16 @@ function App() {
       </AnimatePresence>
 
       {!showWelcome && (
-        <HUD
-          totalCount={animalsData.length}
-          onRandom={handleRandomDiscovery}
-        />
+        <>
+          <HUD
+            totalCount={animalsData.length}
+            onRandom={handleRandomDiscovery}
+          />
+          <GlobeControls
+            currentStyle={globeStyle}
+            onStyleChange={setGlobeStyle}
+          />
+        </>
       )}
 
       {selectedAnimals.length > 0 && (
