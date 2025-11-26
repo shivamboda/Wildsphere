@@ -8,6 +8,11 @@ interface LazyImageProps {
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className, fallbackSrc = 'https://via.placeholder.com/640x360?text=No+Image' }) => {
+    // Handle base URL for GitHub Pages deployment
+    const resolvedSrc = src?.startsWith('/')
+        ? `${import.meta.env.BASE_URL}${src.slice(1)}`
+        : src;
+
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -50,7 +55,7 @@ const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className, fallbackSrc 
 
             {isInView && (
                 <img
-                    src={hasError || !src ? fallbackSrc : src}
+                    src={hasError || !resolvedSrc ? fallbackSrc : resolvedSrc}
                     alt={alt}
                     className={`transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className || 'w-full h-full object-cover'}`}
                     onLoad={handleLoad}
